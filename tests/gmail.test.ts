@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { threadHasReply } from "@/lib/gmail";
+import { threadHasReply, anyAfter } from "@/lib/gmail";
 
 describe("threadHasReply", () => {
   it("true als er een bericht na de verzenddatum van iemand anders is", () => {
@@ -16,5 +16,14 @@ describe("threadHasReply", () => {
       messages: [{ internalDate: "1000", headers: { From: "lars@bidley.ai" } }],
     };
     expect(threadHasReply(thread, "lars@bidley.ai", 500)).toBe(false);
+  });
+});
+
+describe("anyAfter", () => {
+  it("true als een datum na sinceMs ligt", () => {
+    expect(anyAfter(["1000", "2000"], 1500)).toBe(true);
+  });
+  it("false als alle datums voor sinceMs liggen", () => {
+    expect(anyAfter(["1000"], 1500)).toBe(false);
   });
 });

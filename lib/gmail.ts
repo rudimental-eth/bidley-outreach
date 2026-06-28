@@ -30,3 +30,24 @@ export async function fetchThread(threadId: string): Promise<Thread> {
   }));
   return { messages };
 }
+
+// pure: is er minstens één internalDate na sinceMs?
+export function anyAfter(internalDates: string[], sinceMs: number): boolean {
+  return internalDates.some((d) => Number(d) > sinceMs);
+}
+
+export async function hasReplyFrom(prospectEmail: string, sinceMs: number): Promise<boolean> {
+  const gmail = gmailClient();
+  const res = await gmail.users.messages.list({
+    userId: "me",
+    q: `from:${prospectEmail} newer_than:30d`,
+    maxResults: 10,
+  });
+  const ids = (res.data.messages ?? []).map((m) => m.id).filter((id): id is string => Boolean(id));
+  const dates: string[] = [];
+  for (const id of ids) {
+    const msg = await gmail.users.messages.get({ userId: "me", id, format: "minimal" });
+    dates.push(msg.data.internalDate ?? "0");
+  }
+  return anyAfter(dates, sinceMs);
+}

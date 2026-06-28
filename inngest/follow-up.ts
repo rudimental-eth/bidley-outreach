@@ -9,7 +9,7 @@ import { genObservatie, renderTemplate } from "@/lib/claude";
 import { makeToken } from "@/lib/unsubscribe";
 import { isSuppressed, type SuppressionEntry } from "@/lib/suppression";
 import { sendEmail } from "@/lib/resend";
-import { fetchThread, threadHasReply } from "@/lib/gmail";
+import { hasReplyFrom } from "@/lib/gmail";
 import { logAudit } from "@/lib/audit";
 
 // ma-vr 08:30 → verstuurt automatisch Mail2/Mail3 als er geen reply is.
@@ -31,14 +31,13 @@ export const followUp = inngest.createFunction(
       const laatste = (await db.select().from(messages)
         .where(eq(messages.prospectId, p.id))
         .orderBy(desc(messages.verzondenOp)).limit(1))[0];
-      if (!laatste?.verzondenOp || !laatste.gmailThreadId) continue;
+      if (!laatste?.verzondenOp) continue;
 
       const afz = p.afzenderId
         ? (await db.select().from(users).where(eq(users.id, p.afzenderId)).limit(1))[0]
         : (await db.select().from(users).limit(1))[0];
 
-      const thread = await fetchThread(laatste.gmailThreadId);
-      const reply = threadHasReply(thread, afz?.replyTo ?? "", laatste.verzondenOp.getTime());
+      const reply = await hasReplyFrom(p.publiekEmail, laatste.verzondenOp.getTime());
 
       const stap = nextStep(
         { status: p.status, kanaal: "email", laatsteStap: laatste.stap as SequenceStep,
@@ -69,7 +68,7 @@ export const followUp = inngest.createFunction(
         await db.insert(messages).values({
           prospectId: p.id, kanaal: "email", stap, onderwerp: mergeFields(tmpl.onderwerp, velden),
           tekst: renderTemplate(tmpl.body, velden), status: "verzonden",
-          espMessageId: id, gmailThreadId: laatste.gmailThreadId, verzondenOp: new Date(),
+          espMessageId: id, gmailThreadId: null, verzondenOp: new Date(),
         });
         await db.update(prospects).set({ laatsteActieOp: new Date() }).where(eq(prospects.id, p.id));
         await logAudit({ actie: `verstuur-${stap}`, entiteit: "prospect", entiteitId: p.id });
