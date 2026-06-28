@@ -1,36 +1,108 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Bidley Lead Machine — web-app (Fase 1)
 
-## Getting Started
+Een interne, cloud-gehoste web-app voor semi-automatische B2B-outreach voor **Bidley.ai**. Fase 1 dekt het
+fundament + de e-mail-motor: prospects importeren → personaliseren → batch-goedkeuren → versturen via Resend
+→ automatisch opvolgen (Mail 2/3) tenzij er een reply is, met suppressie, afmeldlink en verwerkingsregister
+ingebouwd.
 
-First, run the development server:
+> Ontwerp: `docs/superpowers/specs/2026-06-28-bidley-lead-machine-app-design.md`
+> Plan: `docs/superpowers/plans/2026-06-28-bidley-lead-machine-app-fase-1.md`
+
+## Stack
+
+Next.js 16 (App Router, TypeScript) · Supabase (Postgres + Auth) · Drizzle ORM · Resend · Inngest · Claude API
+· Gmail API · Vitest. Gehost op Vercel.
+
+## Lokaal draaien
 
 ```bash
+npm install
+cp .env.example .env.local   # vul de waarden in (zie hieronder)
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Tests + typecheck + build:
+```bash
+npm test
+npx tsc --noEmit
+npm run build
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment-variabelen
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Zie `.env.example` voor de volledige lijst. Kort:
 
-## Learn More
+| Var | Waarvoor |
+|-----|----------|
+| `DATABASE_URL` | Supabase Postgres connection string |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase client (auth) |
+| `SUPABASE_SERVICE_ROLE_KEY` | server-side Supabase |
+| `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET` | e-mail versturen + webhook-verificatie |
+| `ANTHROPIC_API_KEY` | Claude (observatie-personalisatie) |
+| `UNSUBSCRIBE_SECRET` | HMAC-sleutel voor afmeldtokens (32+ tekens) |
+| `APP_URL` | publieke app-URL (voor afmeldlinks) |
+| `SENDER_DOMAIN` | apart afzenderdomein, bv. `send.bidley.ai` |
+| `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY` | Inngest cloud |
+| `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` | reply-detectie via Gmail |
 
-To learn more about Next.js, take a look at the following resources:
+## Deploy (eenmalige setup)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. **Supabase** — maak een project, zet alle env-vars in Vercel (Production + Preview). Draai de migratie
+   tegen de productie-DB:
+   ```bash
+   npm run db:migrate
+   ```
+2. **Resend** — verifieer het afzenderdomein `send.bidley.ai` (DKIM/SPF/DMARC). Warm het domein een paar
+   weken op vóór volume. Zet een webhook → `https://<app>/api/webhooks/resend` (events: delivered, opened,
+   bounced, complained). Zet `RESEND_WEBHOOK_SECRET`.
+3. **Gmail** — maak een OAuth-client (Google Cloud), autoriseer de afzender-accounts (Lars/Jelmer) en haal
+   een `GMAIL_REFRESH_TOKEN` op met scope `gmail.readonly` (voor reply-detectie). De `reply-to` van elke mail
+   wijst naar het Gmail-adres van de afzender.
+4. **Inngest** — koppel de Inngest-app aan `https://<app>/api/inngest`. De twee crons verschijnen automatisch:
+   `outreach-engine` (ma-vr 08:00) en `follow-up` (ma-vr 08:30), beide Europe/Amsterdam.
+5. **Vercel** — deploy:
+   ```bash
+   npx vercel --prod
+   ```
+6. **Importeer de bestaande tracker** (eenmalig):
+   ```bash
+   npm run import:tracker "<pad>/Bidley-prospect-tracker.xlsx"
+   ```
+7. **Afzenders** — voeg per afzender één rij toe in de `users`-tabel met `afzenderIdentiteit` (weergavenaam),
+   `kvkFooter` (bedrijfsgegevens + KvK) en `replyTo` (Gmail-adres). Prospects zonder expliciete `afzenderId`
+   gebruiken de eerste `users`-rij.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Veilige eerste run (testdraai)
 
-## Deploy on Vercel
+1. Zet één testprospect met **je eigen e-mailadres** op status `nieuw` (kanaal `email`).
+2. Trigger de `outreach-engine`-functie handmatig via het Inngest-dashboard → er verschijnt een concept in de
+   verzendwachtrij.
+3. Open `/queue`, controleer de mail, en verstuur de batch.
+4. Controleer: mail binnen met footer + werkende afmeldlink; afmelden schrijft naar `suppression`; bounce/
+   complaint-webhooks landen in `email_events`; geen mail naar BF-klanten (zet die vooraf in `suppression`).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Architectuur in het kort
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Pure logica** (`lib/suppression`, `lib/unsubscribe`, `lib/personalize`, `lib/sequence`, `lib/copy-kit`) —
+  los getest met Vitest, geen netwerk.
+- **Wrappers** (`lib/resend`, `lib/gmail`, `lib/claude`) — dunne I/O-laag rond externe diensten.
+- **Inngest-jobs** (`inngest/outreach-engine`, `inngest/follow-up`) — orchestratie; bevatten zelf geen
+  businesslogica, roepen de `lib`-modules aan.
+- **Routes** (`app/api/...`) — afmeldlink, Resend-webhook, Inngest-serve, auth-callback.
+- **Proxy** (`proxy.ts`) — Next.js 16's middleware-opvolger; weert niet-ingelogde gebruikers.
+- **UI** (`app/dashboard`, `app/queue`) — pipeline-bord + verzendwachtrij met batch-goedkeuring.
+- **Compliance** — suppressie-check vóór elke verzending, verplichte footer + afmeldlink, audit-log als
+  verwerkingsregister.
+
+## Bekend aandachtspunt (eerste live run)
+
+Automatische opvolging (Mail 2/3) gebruikt reply-detectie via de Gmail-thread (`gmailThreadId` op het
+verzonden bericht). Mail 1 wordt via Resend verstuurd; de koppeling van die verzending aan een Gmail-thread
+moet bij de eerste echte run geverifieerd worden. Tot dat klopt, kan de reply-check beter op de
+`reply-to`-inbox (zoeken op onderwerp) gebaseerd worden i.p.v. op `gmailThreadId`. Dit is het eerste te
+valideren punt na deploy.
+
+## Volgende fases
+
+- **Fase 2** — geautomatiseerde sourcing (Ahrefs-API + WebSearch + ICP-scoring) → kandidaten-goedkeuring.
+- **Fase 3** — LinkedIn-assist (A1-A4) + conversietracking + funnel-analytics.
