@@ -28,7 +28,10 @@ export function buildEmail(i: EmailInput) {
     subject: i.onderwerp,
     text,
     html,
-    headers: { "List-Unsubscribe": `<${i.unsubscribeUrl}>` },
+    headers: {
+      "List-Unsubscribe": `<${i.unsubscribeUrl}>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    },
   };
 }
 

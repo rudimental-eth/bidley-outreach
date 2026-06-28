@@ -13,8 +13,13 @@ export async function proxy(req: NextRequest) {
     },
   );
   const { data: { user } } = await supabase.auth.getUser();
+  const allowed = (process.env.ALLOWED_EMAIL_DOMAINS ?? "blueflamingos.nl,bidley.ai")
+    .split(",").map((d) => d.trim().toLowerCase()).filter(Boolean);
+  const emailDomain = user?.email?.split("@")[1]?.toLowerCase();
+  const domainOk = emailDomain ? allowed.includes(emailDomain) : false;
   const isAuthPage = req.nextUrl.pathname.startsWith("/login") || req.nextUrl.pathname.startsWith("/auth");
   if (!user && !isAuthPage) return NextResponse.redirect(new URL("/login", req.url));
+  if (user && !domainOk && !isAuthPage) return NextResponse.redirect(new URL("/login", req.url));
   return res;
 }
 
