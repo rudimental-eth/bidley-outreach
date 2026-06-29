@@ -2,10 +2,22 @@ import Link from "next/link";
 import { db } from "@/db";
 import { prospects } from "@/db/schema";
 import AppHeader from "@/app/_components/AppHeader";
+import { setStatus } from "@/app/prospects/actions";
 
 export const dynamic = "force-dynamic";
 
 type Prospect = typeof prospects.$inferSelect;
+
+type Status = Prospect["status"];
+
+function transitions(status: Status): { to: Status; label: string; primary?: boolean }[] {
+  switch (status) {
+    case "benaderd": return [{ to: "audit_gestart", label: "Audit", primary: true }, { to: "afgewezen_koud", label: "✗" }];
+    case "audit_gestart": return [{ to: "demo", label: "Demo", primary: true }, { to: "afgewezen_koud", label: "✗" }];
+    case "demo": return [{ to: "klant", label: "Klant", primary: true }, { to: "afgewezen_koud", label: "✗" }];
+    default: return [];
+  }
+}
 
 const COLUMNS = [
   { key: "nieuw", label: "Nieuw", dot: "bg-slate-400", ring: "ring-slate-200" },
@@ -43,6 +55,23 @@ function Card({ p }: { p: Prospect }) {
       {p.haakje && (
         <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-slate-500">{p.haakje}</p>
       )}
+      {transitions(p.status).length > 0 && (
+        <div className="mt-3 flex gap-1.5">
+          {transitions(p.status).map((t) => (
+            <form key={t.to} action={setStatus.bind(null, p.id, t.to)} className="contents">
+              <button
+                className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${
+                  t.primary
+                    ? "bg-slate-900 text-white hover:bg-slate-700"
+                    : "bg-white text-slate-400 ring-1 ring-inset ring-slate-200 hover:text-slate-700"
+                }`}
+              >
+                {t.label}
+              </button>
+            </form>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -66,11 +95,19 @@ export default async function Dashboard() {
     <>
       <AppHeader />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Pipeline</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {rijen.length} {rijen.length === 1 ? "prospect" : "prospects"} in beeld · live uit de database
-          </p>
+        <div className="mb-6 flex items-end justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Pipeline</h1>
+            <p className="mt-1 text-sm text-slate-500">
+              {rijen.length} {rijen.length === 1 ? "prospect" : "prospects"} in beeld · live uit de database
+            </p>
+          </div>
+          <Link
+            href="/prospects/new"
+            className="shrink-0 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-95"
+          >
+            + Nieuwe prospect
+          </Link>
         </div>
 
         <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">

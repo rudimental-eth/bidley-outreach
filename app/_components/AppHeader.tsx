@@ -5,7 +5,9 @@ import { createBrowserClient } from "@supabase/ssr";
 
 const LINKS = [
   { href: "/dashboard", label: "Pipeline" },
+  { href: "/candidates", label: "Kandidaten" },
   { href: "/queue", label: "Wachtrij" },
+  { href: "/funnel", label: "Funnel" },
 ];
 
 export default function AppHeader() {
