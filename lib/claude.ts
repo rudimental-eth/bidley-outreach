@@ -1,10 +1,16 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { mergeFields, type MergeVelden } from "./personalize";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+// Lazy: pas instantiëren bij gebruik, zodat een ontbrekende ANTHROPIC_API_KEY
+// niet de build/imports breekt (alleen een echte call faalt dan).
+let client: Anthropic | null = null;
+function getClient(): Anthropic {
+  if (!client) client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+  return client;
+}
 
 export async function genObservatie(haak: string, bedrijf: string, sector: string): Promise<string> {
-  const msg = await client.messages.create({
+  const msg = await getClient().messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 200,
     messages: [{
