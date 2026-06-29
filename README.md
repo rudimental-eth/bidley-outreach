@@ -90,7 +90,13 @@ Zie `.env.example` voor de volledige lijst. Kort:
   businesslogica, roepen de `lib`-modules aan.
 - **Routes** (`app/api/...`) — afmeldlink, Resend-webhook, Inngest-serve, auth-callback.
 - **Proxy** (`proxy.ts`) — Next.js 16's middleware-opvolger; weert niet-ingelogde gebruikers.
-- **UI** (`app/dashboard`, `app/queue`) — pipeline-bord + verzendwachtrij met batch-goedkeuring.
+- **UI** — app-shell met header/navigatie + login (magic link). Pagina's:
+  - `app/dashboard` — kanban-pipeline met ICP-tier-badges + statusovergangen per kaart
+  - `app/prospects/new` — prospect handmatig toevoegen (ICP-tier automatisch berekend, `lib/icp`)
+  - `app/candidates` — kandidaten goedkeuren/afwijzen (poort 1)
+  - `app/queue` — verzendwachtrij met selectie + batch-goedkeuring (poort 2)
+  - `app/linkedin` — kant-en-klare A1-A4-berichten per prospect (handmatig plaatsen)
+  - `app/funnel` — funnel-analytics (verdeling + conversieratio's)
 - **Compliance** — suppressie-check vóór elke verzending, verplichte footer + afmeldlink, audit-log als
   verwerkingsregister.
 
@@ -102,7 +108,17 @@ moet bij de eerste echte run geverifieerd worden. Tot dat klopt, kan de reply-ch
 `reply-to`-inbox (zoeken op onderwerp) gebaseerd worden i.p.v. op `gmailThreadId`. Dit is het eerste te
 valideren punt na deploy.
 
-## Volgende fases
+## Status & volgende fases
 
-- **Fase 2** — geautomatiseerde sourcing (Ahrefs-API + WebSearch + ICP-scoring) → kandidaten-goedkeuring.
-- **Fase 3** — LinkedIn-assist (A1-A4) + conversietracking + funnel-analytics.
+**Live op https://bidley-outreach.vercel.app** — login (magic link), pipeline, kandidaten, wachtrij,
+LinkedIn-assist en funnel werken. E-mail verstuurt via Resend (interim `onboarding@resend.dev`). Handmatige
+workflow is volledig bruikbaar.
+
+Nog te koppelen (vereist accounts/keys):
+- **Inngest-sync** afmaken → dagelijkse automatisering (`outreach-engine` / `follow-up`) live; nu draaien de
+  crons nog niet (key/omgeving-mismatch van de Vercel-integratie).
+- **Gmail-OAuth-token** → reply-detectie aanzetten (`follow-up` is fail-safe gepauzeerd zonder token).
+- **ANTHROPIC_API_KEY** → AI-observatie-personalisatie in de mails.
+- **Resend `send.bidley.ai`** verifiëren → versturen namens Bidley i.p.v. testadres (wacht op bidley.ai).
+- **`APP_URL`** in Vercel op de live-URL zetten → kloppende afmeldlinks.
+- **Echte Ahrefs-sourcing** (discovery + scoring) → de funnel zichzelf laten vullen i.p.v. handmatig toevoegen.
