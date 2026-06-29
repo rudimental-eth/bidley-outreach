@@ -27,28 +27,51 @@ export default function Login() {
   }
 
   return (
-    <main className="flex h-screen items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <h1 className="mb-1 text-xl font-bold">Bidley Lead Machine</h1>
-        <p className="mb-6 text-sm text-gray-500">Log in met je werk-e-mailadres.</p>
+    <main className="relative flex flex-1 items-center justify-center overflow-hidden p-4">
+      <div className="pointer-events-none absolute -top-32 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-gradient-to-br from-indigo-300/40 to-violet-300/30 blur-3xl" />
+      <div className="relative w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-900/5">
+        <div className="mb-6 flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-lg font-bold text-white shadow-sm">
+            B
+          </span>
+          <div>
+            <div className="text-sm font-semibold tracking-tight text-slate-900">Bidley</div>
+            <div className="text-xs text-slate-400">Lead Machine</div>
+          </div>
+        </div>
+
+        <h1 className="text-lg font-bold text-slate-900">Inloggen</h1>
+        <p className="mb-6 mt-1 text-sm text-slate-500">
+          We sturen je een veilige inloglink naar je werk-e-mailadres.
+        </p>
+
         {status === "verzonden" ? (
-          <p className="rounded bg-green-50 p-3 text-sm text-green-800">
-            Check je inbox — we hebben een inloglink naar <strong>{email}</strong> gestuurd.
-          </p>
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+            <p className="font-medium">Check je inbox ✉️</p>
+            <p className="mt-1 text-emerald-700">
+              We hebben een inloglink naar <strong>{email}</strong> gestuurd.
+            </p>
+          </div>
         ) : (
           <form onSubmit={verstuur} className="space-y-3">
             <input
-              type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="jij@blueflamingos.nl"
-              className="w-full rounded border px-3 py-2"
+              className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
             />
             <button
-              type="submit" disabled={status === "bezig"}
-              className="w-full rounded bg-black px-6 py-2 text-white disabled:opacity-50"
+              type="submit"
+              disabled={status === "bezig"}
+              className="w-full rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
             >
               {status === "bezig" ? "Versturen…" : "Stuur inloglink"}
             </button>
-            {status === "fout" && <p className="text-sm text-red-600">{fout}</p>}
+            {status === "fout" && (
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{fout}</p>
+            )}
           </form>
         )}
       </div>
