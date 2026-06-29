@@ -1,3 +1,4 @@
+import "./load-env";
 import * as XLSX from "xlsx";
 import { db } from "@/db";
 import { prospects } from "@/db/schema";
