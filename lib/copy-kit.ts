@@ -49,3 +49,29 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
 export function footer(kvkFooter: string, unsubscribeUrl: string): string {
   return `\n\n—\n${kvkFooter}\nAfmelden: ${unsubscribeUrl}`;
 }
+
+// LinkedIn-spoor (semi-handmatig; tekst klaarzetten, plaatsen binnen ToS).
+export type LinkedInTemplate = { stap: "A1" | "A2" | "A3" | "A4"; titel: string; body: string };
+
+export const LINKEDIN_TEMPLATES: LinkedInTemplate[] = [
+  {
+    stap: "A1",
+    titel: "Connectieverzoek (geen pitch)",
+    body: "Hoi {voornaam}, ik zie dat {bedrijf} actief adverteert op Google. Ik help ondernemers hun Ads-rendement te verhogen zonder duur bureau. Leek me interessant om te connecten.",
+  },
+  {
+    stap: "A2",
+    titel: "Na acceptatie — waardevraag + audit",
+    body: "Dank voor het connecten, {voornaam}! Korte vraag: doe je Google Ads zelf of via een bureau? Ik vraag het omdat ik bij veel {sector}-bedrijven zie dat er budget weglekt op zoektermen die niet converteren. We hebben een gratis audit waarmee je in een paar minuten ziet waar jouw besparing zit — geen verplichting. Zal ik 'm sturen?",
+  },
+  {
+    stap: "A3",
+    titel: "Opvolging — proof + audit-CTA",
+    body: "Even kort, {voornaam}: bedrijven als Renovlies en NN Tuning hebben met onze aanpak hun kosten per lead met ~20–27% verlaagd, volledig op automatische piloot. Wil je zien wat er voor {bedrijf} mogelijk is? De gratis audit staat hier: bidley.ai/audit — duurt een paar minuten.",
+  },
+  {
+    stap: "A4",
+    titel: "Naar demo (warm)",
+    body: "Top dat je de audit hebt gedaan. Op basis daarvan kan ik je in 15 min laten zien hoe Bidley dit concreet voor {bedrijf} oppakt. Plannen kan direct: bidley.ai/demo. Liever even bellen? Ook prima.",
+  },
+];
