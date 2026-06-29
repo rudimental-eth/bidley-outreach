@@ -37,6 +37,12 @@ export function anyAfter(internalDates: string[], sinceMs: number): boolean {
 }
 
 export async function hasReplyFrom(prospectEmail: string, sinceMs: number): Promise<boolean> {
+  // Fail-safe: zonder Gmail-koppeling kunnen we replies niet checken → behandel
+  // als "er is een reply" zodat follow-up GEEN mail stuurt (veiligste keuze).
+  if (!process.env.GMAIL_REFRESH_TOKEN) {
+    console.warn("[gmail] geen GMAIL_REFRESH_TOKEN — reply-check overgeslagen, follow-up gepauzeerd.");
+    return true;
+  }
   const gmail = gmailClient();
   const res = await gmail.users.messages.list({
     userId: "me",
