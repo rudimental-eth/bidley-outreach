@@ -18,7 +18,9 @@ function slug(naam: string): string {
 }
 
 export function buildEmail(i: EmailInput) {
-  const fromAddr = `${slug(i.afzenderNaam)}@${SENDER_DOMAIN}`;
+  // SENDER_FROM overschrijft het volledige from-adres (bijv. onboarding@resend.dev
+  // voor een test vóór domeinverificatie). Anders: <slug>@<SENDER_DOMAIN>.
+  const fromAddr = process.env.SENDER_FROM ?? `${slug(i.afzenderNaam)}@${SENDER_DOMAIN}`;
   const text = i.body + footer(i.kvkFooter, i.unsubscribeUrl);
   const html = text.replace(/\n/g, "<br>");
   return {
