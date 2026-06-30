@@ -24,13 +24,19 @@ function cleanWebsite(c: string) {
   return t || null;
 }
 
-function parseTables(md: string): { section: string; rows: Row[] }[] {
+// Runs die genegeerd worden (pre-tweak, te grote adverteerders / Home & Living-maatwerk).
+const SKIP_RUNS = new Set(["2026-06-15"]);
+
+function parseTables(md: string): { section: string; runDate: string; rows: Row[] }[] {
   const lines = md.split("\n");
-  const out: { section: string; rows: Row[] }[] = [];
+  const out: { section: string; runDate: string; rows: Row[] }[] = [];
   let section = "";
+  let runDate = "onbekend";
   let i = 0;
   while (i < lines.length) {
     const line = lines[i];
+    const dateMatch = line.match(/^##\s+(2026-\d{2}-\d{2})/);
+    if (dateMatch) runDate = dateMatch[1];
     if (/^#{1,6}\s/.test(line) || /^\*\*.+\*\*/.test(line.trim())) section = line.replace(/[#*]/g, "").trim();
     const isTableRow = line.trim().startsWith("|");
     const next = lines[i + 1] ?? "";
@@ -45,7 +51,7 @@ function parseTables(md: string): { section: string; rows: Row[] }[] {
         rows.push(row);
         j++;
       }
-      out.push({ section, rows });
+      out.push({ section, runDate, rows });
       i = j;
     } else i++;
   }
@@ -67,8 +73,10 @@ async function main() {
   const seen = new Set(bestaand.map((b) => b.bedrijf.toLowerCase()));
 
   let toegevoegd = 0, overgeslagen = 0;
-  for (const { section, rows } of tables) {
+  const perRun: Record<string, number> = {};
+  for (const { section, runDate, rows } of tables) {
     if (/afvaller|niet benaderen|tier c/i.test(section)) continue; // diskwalificaties overslaan
+    if (SKIP_RUNS.has(runDate)) continue;                          // pre-tweak runs overslaan
     for (const r of rows) {
       const bedrijf = cleanCell(r["bedrijf"] ?? "");
       if (!bedrijf || bedrijf.toLowerCase() === "bedrijf") continue;
@@ -98,13 +106,15 @@ async function main() {
         icpTotaal, tier,
         ...scoreFields,
         kanaal: "email",
-        bron: "import-kandidaten",
+        bron: `kandidaten-${runDate}`,
         status: "kandidaat",
       });
+      perRun[runDate] = (perRun[runDate] ?? 0) + 1;
       toegevoegd++;
     }
   }
   console.log(`Klaar: ${toegevoegd} kandidaten toegevoegd, ${overgeslagen} overgeslagen (al aanwezig/dubbel).`);
+  console.log("Per run:", Object.entries(perRun).map(([d, n]) => `${d}: ${n}`).join(" · "));
   process.exit(0);
 }
 main();
