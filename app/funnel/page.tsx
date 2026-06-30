@@ -1,20 +1,19 @@
 import { db } from "@/db";
 import { prospects, conversions } from "@/db/schema";
 import AppHeader from "@/app/_components/AppHeader";
+import { PageHeader, StatCard, Icons } from "@/app/_components/ui";
 
 export const dynamic = "force-dynamic";
 
 const STAGES = [
-  { key: "nieuw", label: "Nieuw", color: "bg-slate-400" },
-  { key: "benaderd", label: "Benaderd", color: "bg-blue-500" },
-  { key: "audit_gestart", label: "Audit gestart", color: "bg-amber-500" },
-  { key: "demo", label: "Demo", color: "bg-violet-500" },
-  { key: "klant", label: "Klant", color: "bg-emerald-500" },
+  { key: "benaderd", label: "Benaderd", from: "from-blue-500", to: "to-blue-400" },
+  { key: "audit_gestart", label: "Audit gestart", from: "from-amber-500", to: "to-amber-400" },
+  { key: "demo", label: "Demo", from: "from-violet-500", to: "to-violet-400" },
+  { key: "klant", label: "Klant", from: "from-emerald-500", to: "to-emerald-400" },
 ] as const;
 
 function pct(a: number, b: number) {
-  if (b === 0) return "—";
-  return `${Math.round((a / b) * 100)}%`;
+  return b === 0 ? "—" : `${Math.round((a / b) * 100)}%`;
 }
 
 export default async function Funnel() {
@@ -23,71 +22,80 @@ export default async function Funnel() {
     db.select().from(conversions),
   ]);
   const count = (s: string) => rijen.filter((r) => r.status === s).length;
-  const max = Math.max(1, ...STAGES.map((s) => count(s.key)));
-  const benaderd = count("benaderd") + count("audit_gestart") + count("demo") + count("klant");
+  // Cumulatief: wie demo is, was ook benaderd etc.
+  const cum = {
+    benaderd: count("benaderd") + count("audit_gestart") + count("demo") + count("klant"),
+    audit_gestart: count("audit_gestart") + count("demo") + count("klant"),
+    demo: count("demo") + count("klant"),
+    klant: count("klant"),
+  };
+  const top = Math.max(1, cum.benaderd);
   const audits = convs.filter((c) => c.type === "audit_gestart").length;
   const demos = convs.filter((c) => c.type === "demo_geboekt").length;
-  const afgewezen = rijen.filter((r) => r.status === "afgewezen_koud").length;
-  const optOut = rijen.filter((r) => r.status === "opt_out").length;
+
+  // Sectorverdeling (actieve + kandidaat)
+  const sectorMap = new Map<string, number>();
+  rijen.forEach((r) => { const s = r.sector?.trim(); if (s) sectorMap.set(s, (sectorMap.get(s) ?? 0) + 1); });
+  const sectors = [...sectorMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const sectorMax = Math.max(1, ...sectors.map((s) => s[1]));
 
   return (
     <>
       <AppHeader />
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Funnel</h1>
-          <p className="mt-1 text-sm text-slate-500">Momentopname van de pipeline + conversiesignalen.</p>
-        </div>
+        <PageHeader title="Funnel" subtitle="Conversie door de pijplijn + waar je leads vandaan komen." />
 
         <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="Ooit benaderd" value={benaderd} accent="text-blue-600" />
-          <Stat label="Audits gestart" value={audits} accent="text-amber-600" />
-          <Stat label="Demo's geboekt" value={demos} accent="text-violet-600" />
-          <Stat label="Klanten" value={count("klant")} accent="text-emerald-600" />
+          <StatCard label="Ooit benaderd" value={cum.benaderd} accent="bg-blue-100 text-blue-700" icon={<Icons.send />} />
+          <StatCard label="Audits gestart" value={audits} accent="bg-amber-100 text-amber-700" icon={<Icons.spark />} />
+          <StatCard label="Demo's geboekt" value={demos} accent="bg-violet-100 text-violet-700" icon={<Icons.check className="h-5 w-5" />} />
+          <StatCard label="Klanten" value={cum.klant} accent="bg-emerald-100 text-emerald-700" icon={<Icons.trophy />} />
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-sm font-semibold text-slate-700">Verdeling per fase</h2>
-          <div className="space-y-3">
-            {STAGES.map((s) => {
-              const c = count(s.key);
+        <div className="rise rounded-2xl border border-slate-200/80 bg-white/90 p-6 shadow-sm">
+          <h2 className="mb-5 text-sm font-semibold text-slate-700">Conversietrechter</h2>
+          <div className="flex flex-col items-center gap-2">
+            {STAGES.map((s, i) => {
+              const v = cum[s.key as keyof typeof cum];
+              const width = 40 + (v / top) * 60; // 40%–100%
+              const prev = i === 0 ? null : cum[STAGES[i - 1].key as keyof typeof cum];
               return (
-                <div key={s.key} className="flex items-center gap-3">
-                  <span className="w-28 shrink-0 text-sm text-slate-600">{s.label}</span>
-                  <div className="h-6 flex-1 overflow-hidden rounded-lg bg-slate-100">
-                    <div className={`h-full ${s.color} transition-all`} style={{ width: `${(c / max) * 100}%` }} />
+                <div key={s.key} className="flex w-full flex-col items-center">
+                  {prev !== null && (
+                    <div className="my-0.5 text-[11px] font-medium text-slate-400">↓ {pct(v, prev)}</div>
+                  )}
+                  <div
+                    className={`flex items-center justify-between rounded-xl bg-gradient-to-r ${s.from} ${s.to} px-4 py-3 text-white shadow-sm transition-all`}
+                    style={{ width: `${width}%` }}
+                  >
+                    <span className="text-sm font-semibold">{s.label}</span>
+                    <span className="text-lg font-bold tabular-nums">{v}</span>
                   </div>
-                  <span className="w-8 shrink-0 text-right text-sm font-semibold tabular-nums text-slate-700">{c}</span>
                 </div>
               );
             })}
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Rate label="Benaderd → demo" value={pct(count("demo") + count("klant"), benaderd)} />
-          <Rate label="Demo → klant" value={pct(count("klant"), count("demo") + count("klant"))} />
-          <Rate label="Afgewezen / opt-out" value={`${afgewezen + optOut}`} />
+        <div className="mt-4 rise rounded-2xl border border-slate-200/80 bg-white/90 p-6 shadow-sm">
+          <h2 className="mb-4 text-sm font-semibold text-slate-700">Sectoren in de pijplijn</h2>
+          {sectors.length === 0 ? (
+            <p className="text-sm text-slate-400">Nog geen sectordata.</p>
+          ) : (
+            <div className="space-y-2.5">
+              {sectors.map(([naam, n]) => (
+                <div key={naam} className="flex items-center gap-3">
+                  <span className="w-44 shrink-0 truncate text-sm text-slate-600" title={naam}>{naam}</span>
+                  <div className="h-5 flex-1 overflow-hidden rounded-lg bg-slate-100">
+                    <div className="h-full rounded-lg bg-gradient-to-r from-indigo-500 to-violet-500" style={{ width: `${(n / sectorMax) * 100}%` }} />
+                  </div>
+                  <span className="w-7 shrink-0 text-right text-sm font-semibold tabular-nums text-slate-700">{n}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
     </>
-  );
-}
-
-function Stat({ label, value, accent }: { label: string; value: number; accent: string }) {
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className={`text-2xl font-bold tabular-nums ${accent}`}>{value}</div>
-      <div className="mt-0.5 text-xs font-medium text-slate-500">{label}</div>
-    </div>
-  );
-}
-
-function Rate({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="text-xl font-bold tabular-nums text-slate-900">{value}</div>
-      <div className="mt-0.5 text-xs font-medium text-slate-500">{label}</div>
-    </div>
   );
 }
