@@ -10,7 +10,6 @@ import { findPublicEmail } from "@/lib/contact";
 import { EMAIL_TEMPLATES } from "@/lib/copy-kit";
 import { mergeFields } from "@/lib/personalize";
 import { makeToken } from "@/lib/unsubscribe";
-import { genObservatie } from "@/lib/claude";
 
 type Status =
   | "kandidaat" | "nieuw" | "benaderd" | "audit_gestart" | "demo" | "klant"
@@ -96,17 +95,11 @@ export async function genereerMail1(id: string) {
     ? (await db.select().from(users).where(eq(users.id, p.afzenderId)).limit(1))[0]
     : (await db.select().from(users).limit(1))[0];
 
-  let observatie = "";
-  if (process.env.ANTHROPIC_API_KEY && p.haakje) {
-    try { observatie = await genObservatie(p.haakje, p.bedrijf, p.sector ?? ""); } catch { observatie = ""; }
-  }
-  if (!observatie) observatie = p.haakje ?? "Ik zag dat jullie actief adverteren op Google.";
-
   const tmpl = EMAIL_TEMPLATES.find((t) => t.stap === "Mail1")!;
   const velden = {
     voornaam: p.contactpersoon?.split(" ")[0] ?? "",
-    bedrijf: p.bedrijf, zoekwoord: p.haakje ?? "", sector: p.sector ?? "",
-    observatie, afzender: afz?.afzenderIdentiteit ?? "Bidley",
+    bedrijf: p.bedrijf, sector: p.sector ?? "",
+    afzender: afz?.afzenderIdentiteit ?? "Bidley",
   };
   const token = makeToken(p.publiekEmail, process.env.UNSUBSCRIBE_SECRET!);
   await db.insert(messages).values({

@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { prospects, messages, users } from "@/db/schema";
 import { nextStep } from "@/lib/sequence";
 import { EMAIL_TEMPLATES } from "@/lib/copy-kit";
-import { genObservatie, renderTemplate } from "@/lib/claude";
+import { renderTemplate } from "@/lib/claude";
 import { mergeFields } from "@/lib/personalize";
 import { makeToken } from "@/lib/unsubscribe";
 
@@ -31,11 +31,10 @@ export const outreachEngine = inngest.createFunction(
         const afz = p.afzenderId
           ? (await db.select().from(users).where(eq(users.id, p.afzenderId)).limit(1))[0]
           : (await db.select().from(users).limit(1))[0];
-        const observatie = p.haakje ? await genObservatie(p.haakje, p.bedrijf, p.sector ?? "") : "";
         const velden = {
           voornaam: p.contactpersoon?.split(" ")[0] ?? "",
-          bedrijf: p.bedrijf, zoekwoord: p.haakje ?? "", sector: p.sector ?? "",
-          observatie, afzender: afz?.afzenderIdentiteit ?? "Bidley",
+          bedrijf: p.bedrijf, sector: p.sector ?? "",
+          afzender: afz?.afzenderIdentiteit ?? "Bidley",
         };
         const token = makeToken(p.publiekEmail!, process.env.UNSUBSCRIBE_SECRET!);
         await db.insert(messages).values({

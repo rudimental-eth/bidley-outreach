@@ -5,7 +5,7 @@ import { prospects, messages, users, suppression } from "@/db/schema";
 import { nextStep, type SequenceStep } from "@/lib/sequence";
 import { EMAIL_TEMPLATES } from "@/lib/copy-kit";
 import { mergeFields } from "@/lib/personalize";
-import { genObservatie, renderTemplate } from "@/lib/claude";
+import { renderTemplate } from "@/lib/claude";
 import { makeToken } from "@/lib/unsubscribe";
 import { isSuppressed, type SuppressionEntry } from "@/lib/suppression";
 import { sendEmail } from "@/lib/resend";
@@ -51,11 +51,9 @@ export const followUp = inngest.createFunction(
 
       await step.run(`verstuur-${stap}-${p.id}`, async () => {
         const tmpl = EMAIL_TEMPLATES.find((t) => t.stap === stap)!;
-        const observatie = p.haakje ? await genObservatie(p.haakje, p.bedrijf, p.sector ?? "") : "";
         const velden = {
           voornaam: p.contactpersoon?.split(" ")[0] ?? "", bedrijf: p.bedrijf,
-          zoekwoord: p.haakje ?? "", sector: p.sector ?? "", observatie,
-          afzender: afz?.afzenderIdentiteit ?? "Bidley",
+          sector: p.sector ?? "", afzender: afz?.afzenderIdentiteit ?? "Bidley",
         };
         const token = makeToken(p.publiekEmail!, process.env.UNSUBSCRIBE_SECRET!);
         const url = `${process.env.APP_URL}/api/unsubscribe/${token}`;
