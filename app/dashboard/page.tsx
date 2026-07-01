@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { prospects } from "@/db/schema";
+import { prospects, messages } from "@/db/schema";
 import AppHeader from "@/app/_components/AppHeader";
 import { PageHeader, StatCard, Icons } from "@/app/_components/ui";
 import PipelineBoard, { type Card } from "./PipelineBoard";
@@ -9,6 +10,9 @@ export const dynamic = "force-dynamic";
 
 export default async function Dashboard() {
   const rijen = await db.select().from(prospects);
+  const queued = await db.select({ prospectId: messages.prospectId }).from(messages)
+    .where(and(eq(messages.stap, "Mail1"), eq(messages.status, "in_wachtrij")));
+  const queuedIds = [...new Set(queued.map((q) => q.prospectId))];
   const active = rijen.filter((r) => !["kandidaat", "afgewezen_koud", "opt_out"].includes(r.status));
   const count = (s: string) => rijen.filter((r) => r.status === s).length;
   const inSequence = count("benaderd") + count("audit_gestart") + count("demo");
@@ -40,7 +44,7 @@ export default async function Dashboard() {
           <StatCard label="Klanten" value={count("klant")} accent="bg-emerald-100 text-emerald-700" icon={<Icons.trophy />} />
         </div>
 
-        <PipelineBoard cards={cards} />
+        <PipelineBoard cards={cards} queuedIds={queuedIds} />
       </main>
     </>
   );

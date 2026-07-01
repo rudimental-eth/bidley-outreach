@@ -77,6 +77,10 @@ export async function verrijkContact(id: string) {
   if (email) {
     await db.update(prospects).set({ publiekEmail: email }).where(eq(prospects.id, id));
     await logAudit({ actie: "contact-verrijkt", entiteit: "prospect", entiteitId: id, doorWie: "gebruiker" });
+  } else {
+    // Geen publiek zakelijk adres gevonden → LinkedIn-spoor (compliance-regel).
+    await db.update(prospects).set({ kanaal: "linkedin" }).where(eq(prospects.id, id));
+    await logAudit({ actie: "geen-publiek-email", entiteit: "prospect", entiteitId: id, doorWie: "gebruiker" });
   }
   revalidatePath("/dashboard");
 }

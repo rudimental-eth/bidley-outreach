@@ -1,5 +1,27 @@
 "use client";
 import { useState } from "react";
+import { useFormStatus } from "react-dom";
+
+function SendButton({ count }: { count: number }) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={count === 0 || pending}
+      className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
+    >
+      {pending ? (
+        <>
+          <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
+            <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+          </svg>
+          Versturen…
+        </>
+      ) : `Verstuur batch (${count})`}
+    </button>
+  );
+}
 
 export type QueueRow = {
   id: string;
@@ -78,13 +100,7 @@ export default function QueueItems({ rows }: { rows: QueueRow[] }) {
         <span className="px-1 text-sm text-slate-500">
           {selected.size} {selected.size === 1 ? "mail" : "mails"} klaar om te versturen
         </span>
-        <button
-          type="submit"
-          disabled={selected.size === 0}
-          className="rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Verstuur batch ({selected.size})
-        </button>
+        <SendButton count={selected.size} />
       </div>
     </>
   );

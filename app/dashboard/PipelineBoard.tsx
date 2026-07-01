@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import { setStatus, verrijkContact, genereerMail1 } from "@/app/prospects/actions";
 import { Badge, tierTone } from "@/app/_components/ui";
+import SubmitButton from "@/app/_components/SubmitButton";
 
 export type Card = {
   id: string; bedrijf: string; sector: string | null; tier: string | null;
@@ -26,9 +27,10 @@ function transitions(status: string): { to: string; label: string; primary?: boo
   }
 }
 
-export default function PipelineBoard({ cards }: { cards: Card[] }) {
+export default function PipelineBoard({ cards, queuedIds }: { cards: Card[]; queuedIds: string[] }) {
   const [q, setQ] = useState("");
   const [tier, setTier] = useState<"alle" | "A" | "B" | "C">("alle");
+  const queued = new Set(queuedIds);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -89,16 +91,24 @@ export default function PipelineBoard({ cards }: { cards: Card[] }) {
                     {p.haakje && <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-slate-500">{p.haakje}</p>}
                     {p.status === "nieuw" && (
                       <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                        {p.publiekEmail ? (
+                        {queued.has(p.id) ? (
+                          <a href="/queue" className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200 transition hover:bg-emerald-100">
+                            ✉️ Mail 1 staat klaar → wachtrij
+                          </a>
+                        ) : p.publiekEmail ? (
                           <>
                             <span className="max-w-full truncate text-[11px] text-slate-400">{p.publiekEmail}</span>
                             <form action={genereerMail1.bind(null, p.id)} className="contents">
-                              <button className="rounded-md bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white transition hover:bg-slate-700">✉️ Genereer Mail 1</button>
+                              <SubmitButton pendingLabel="Genereren…" className="rounded-md bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white hover:bg-slate-700">✉️ Genereer Mail 1</SubmitButton>
                             </form>
                           </>
+                        ) : p.kanaal === "linkedin" ? (
+                          <a href="/linkedin" className="inline-flex items-center gap-1 rounded-md bg-violet-50 px-2 py-1 text-[11px] font-semibold text-violet-700 ring-1 ring-inset ring-violet-200 transition hover:bg-violet-100">
+                            Geen e-mail gevonden → LinkedIn
+                          </a>
                         ) : (
                           <form action={verrijkContact.bind(null, p.id)} className="contents">
-                            <button className="rounded-md bg-white px-2 py-1 text-[11px] font-semibold text-indigo-600 ring-1 ring-inset ring-indigo-200 transition hover:bg-indigo-50">🔎 Zoek contact</button>
+                            <SubmitButton pendingLabel="Zoeken…" className="rounded-md bg-white px-2 py-1 text-[11px] font-semibold text-indigo-600 ring-1 ring-inset ring-indigo-200 hover:bg-indigo-50">🔎 Zoek contact</SubmitButton>
                           </form>
                         )}
                       </div>
@@ -107,9 +117,9 @@ export default function PipelineBoard({ cards }: { cards: Card[] }) {
                       <div className="mt-3 flex gap-1.5">
                         {transitions(p.status).map((t) => (
                           <form key={t.to} action={setStatus.bind(null, p.id, t.to as never)} className="contents">
-                            <button className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${t.primary ? "bg-slate-900 text-white hover:bg-slate-700" : "bg-white text-slate-400 ring-1 ring-inset ring-slate-200 hover:text-slate-700"}`}>
+                            <SubmitButton pendingLabel="…" className={`rounded-md px-2 py-1 text-[11px] font-semibold ${t.primary ? "bg-slate-900 text-white hover:bg-slate-700" : "bg-white text-slate-400 ring-1 ring-inset ring-slate-200 hover:text-slate-700"}`}>
                               {t.label}
-                            </button>
+                            </SubmitButton>
                           </form>
                         ))}
                       </div>

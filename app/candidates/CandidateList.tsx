@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import { setStatus } from "@/app/prospects/actions";
 import { Badge, tierTone, EmptyState } from "@/app/_components/ui";
+import SubmitButton from "@/app/_components/SubmitButton";
 
 export type Cand = {
   id: string; bedrijf: string; sector: string | null; tier: string | null;
@@ -63,10 +64,10 @@ export default function CandidateList({ cands }: { cands: Cand[] }) {
               </div>
               <div className="flex shrink-0 gap-2">
                 <form action={setStatus.bind(null, p.id, "nieuw" as never)}>
-                  <button className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500">Goedkeuren</button>
+                  <SubmitButton pendingLabel="Bezig…" className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-500">Goedkeuren</SubmitButton>
                 </form>
                 <form action={setStatus.bind(null, p.id, "afgewezen_koud" as never)}>
-                  <button className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 ring-1 ring-inset ring-slate-200 transition hover:bg-slate-50">Afwijzen</button>
+                  <SubmitButton className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 ring-1 ring-inset ring-slate-200 hover:bg-slate-50">Afwijzen</SubmitButton>
                 </form>
               </div>
             </div>
