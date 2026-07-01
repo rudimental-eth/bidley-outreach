@@ -1,5 +1,24 @@
 // Dedup-garantie voor sourcing: geen enkel bestaand bedrijf/domein opnieuw ophalen.
 
+export function domainFromUrl(url: string): string {
+  try {
+    const u = new URL(url.startsWith("http") ? url : `https://${url}`);
+    return u.hostname.replace(/^www\./, "").toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+// Te grote adverteerder (proxy-budget ver boven de sweet spot) → geen goede ICP.
+export function tooBig(paidCostUsd: number): boolean {
+  return paidCostUsd > 15000;
+}
+
+// Kwalificeert voor de kandidaten-wachtkamer: adverteert aantoonbaar én niet te groot.
+export function qualifiesForSourcing(paidKw: number, paidCostUsd: number): boolean {
+  return paidKw > 0 && !tooBig(paidCostUsd);
+}
+
 export function normalizeDomain(website: string): string {
   return website
     .trim()

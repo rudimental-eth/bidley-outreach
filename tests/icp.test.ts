@@ -1,5 +1,19 @@
 import { describe, it, expect } from "vitest";
-import { icpTotal, icpTier, scoreProspect } from "@/lib/icp";
+import { icpTotal, icpTier, scoreProspect, scoreFromPaid } from "@/lib/icp";
+
+describe("scoreFromPaid", () => {
+  it("sterke adverteerder in sweet spot → hoge ads + budget", () => {
+    const s = scoreFromPaid(120, 3000);
+    expect(s.ads).toBe(5);
+    expect(s.budget).toBe(5);
+  });
+  it("te grote spend → budget 1", () => {
+    expect(scoreFromPaid(300, 40000).budget).toBe(1);
+  });
+  it("geen paid → ads 1", () => {
+    expect(scoreFromPaid(0, 0).ads).toBe(1);
+  });
+});
 
 describe("icpTotal", () => {
   it("telt de 5 assen op", () => {

@@ -1,5 +1,26 @@
 import { describe, it, expect } from "vitest";
-import { normalizeDomain, filterNew } from "@/lib/sourcing";
+import { normalizeDomain, filterNew, domainFromUrl, tooBig, qualifiesForSourcing } from "@/lib/sourcing";
+
+describe("domainFromUrl", () => {
+  it("haalt het domein uit een SERP-url", () => {
+    expect(domainFromUrl("https://www.acme.nl/product/x?y=1")).toBe("acme.nl");
+  });
+  it("geeft leeg bij lege input", () => {
+    expect(domainFromUrl("")).toBe("");
+  });
+});
+
+describe("tooBig / qualifiesForSourcing", () => {
+  it("boven €15K = te groot", () => {
+    expect(tooBig(20000)).toBe(true);
+    expect(tooBig(5000)).toBe(false);
+  });
+  it("kwalificeert alleen bij paid-aanwezigheid en niet te groot", () => {
+    expect(qualifiesForSourcing(20, 3000)).toBe(true);
+    expect(qualifiesForSourcing(0, 3000)).toBe(false);
+    expect(qualifiesForSourcing(50, 25000)).toBe(false);
+  });
+});
 
 describe("normalizeDomain", () => {
   it("strip protocol, www, pad en hoofdletters", () => {

@@ -10,6 +10,7 @@ import { findPublicEmail } from "@/lib/contact";
 import { EMAIL_TEMPLATES } from "@/lib/copy-kit";
 import { mergeFields } from "@/lib/personalize";
 import { makeToken } from "@/lib/unsubscribe";
+import { runSourcing } from "@/lib/sourcing-run";
 
 type Status =
   | "kandidaat" | "nieuw" | "benaderd" | "audit_gestart" | "demo" | "klant"
@@ -67,6 +68,16 @@ export async function setStatus(id: string, status: Status) {
   revalidatePath("/dashboard");
   revalidatePath("/candidates");
   revalidatePath("/funnel");
+}
+
+// Haalt via Ahrefs een nieuwe batch kandidaten op (voor de knop op /candidates).
+export async function sourceCandidates(
+  _prev: { message: string } | null,
+  _formData: FormData,
+): Promise<{ message: string }> {
+  const r = await runSourcing({ keywords: 4 });
+  revalidatePath("/candidates");
+  return { message: r.message };
 }
 
 // Zoekt het publieke zakelijke e-mailadres op de eigen website van de prospect.

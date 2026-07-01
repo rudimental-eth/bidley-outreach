@@ -4,6 +4,7 @@ import { prospects } from "@/db/schema";
 import AppHeader from "@/app/_components/AppHeader";
 import { PageHeader } from "@/app/_components/ui";
 import CandidateList, { type Cand } from "./CandidateList";
+import SourceButton from "./SourceButton";
 
 export const dynamic = "force-dynamic";
 
@@ -42,10 +43,13 @@ export default async function Candidates() {
             </div>
           </div>
           <p className="mt-2 text-xs leading-relaxed text-slate-500">
-            Er komen nu geen kandidaten vanzelf bij. Nieuwe batches worden via een Ahrefs-research-run toegevoegd
-            (met dedup: bestaande bedrijven worden nooit opnieuw opgehaald). Dagelijkse automatische sourcing gaat
-            live zodra de Ahrefs-API-key + Inngest gekoppeld zijn.
+            Klik op &ldquo;Nieuwe kandidaten ophalen&rdquo; om via Ahrefs zelf adverteerders te vinden, te scoren en
+            toe te voegen (met dedup: bestaande bedrijven komen nooit dubbel). Werkt zodra <code>AHREFS_API_KEY</code>
+            in Vercel staat; daarna draait de dagelijkse cron dit ook automatisch (ma-vr 07:00).
           </p>
+          <div className="mt-3">
+            <SourceButton />
+          </div>
         </div>
 
         <CandidateList cands={cands} />
