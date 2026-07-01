@@ -1,11 +1,16 @@
 "use server";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { prospects, conversions } from "@/db/schema";
+import { prospects, conversions, messages, users } from "@/db/schema";
 import { scoreProspect } from "@/lib/icp";
 import { logAudit } from "@/lib/audit";
+import { findPublicEmail } from "@/lib/contact";
+import { EMAIL_TEMPLATES } from "@/lib/copy-kit";
+import { mergeFields } from "@/lib/personalize";
+import { makeToken } from "@/lib/unsubscribe";
+import { genObservatie } from "@/lib/claude";
 
 type Status =
   | "kandidaat" | "nieuw" | "benaderd" | "audit_gestart" | "demo" | "klant"
@@ -63,4 +68,54 @@ export async function setStatus(id: string, status: Status) {
   revalidatePath("/dashboard");
   revalidatePath("/candidates");
   revalidatePath("/funnel");
+}
+
+// Zoekt het publieke zakelijke e-mailadres op de eigen website van de prospect.
+export async function verrijkContact(id: string) {
+  const p = (await db.select().from(prospects).where(eq(prospects.id, id)).limit(1))[0];
+  if (!p?.website) return;
+  const email = await findPublicEmail(p.website);
+  if (email) {
+    await db.update(prospects).set({ publiekEmail: email }).where(eq(prospects.id, id));
+    await logAudit({ actie: "contact-verrijkt", entiteit: "prospect", entiteitId: id, doorWie: "gebruiker" });
+  }
+  revalidatePath("/dashboard");
+}
+
+// Bouwt een Mail 1-concept in de wachtrij (zonder Inngest). Idempotent per prospect.
+export async function genereerMail1(id: string) {
+  const p = (await db.select().from(prospects).where(eq(prospects.id, id)).limit(1))[0];
+  if (!p?.publiekEmail) return;
+
+  const bestaand = (await db.select().from(messages)
+    .where(and(eq(messages.prospectId, id), eq(messages.stap, "Mail1"), eq(messages.status, "in_wachtrij")))
+    .limit(1))[0];
+  if (bestaand) return; // al in de wachtrij
+
+  const afz = p.afzenderId
+    ? (await db.select().from(users).where(eq(users.id, p.afzenderId)).limit(1))[0]
+    : (await db.select().from(users).limit(1))[0];
+
+  let observatie = "";
+  if (process.env.ANTHROPIC_API_KEY && p.haakje) {
+    try { observatie = await genObservatie(p.haakje, p.bedrijf, p.sector ?? ""); } catch { observatie = ""; }
+  }
+  if (!observatie) observatie = p.haakje ?? "Ik zag dat jullie actief adverteren op Google.";
+
+  const tmpl = EMAIL_TEMPLATES.find((t) => t.stap === "Mail1")!;
+  const velden = {
+    voornaam: p.contactpersoon?.split(" ")[0] ?? "",
+    bedrijf: p.bedrijf, zoekwoord: p.haakje ?? "", sector: p.sector ?? "",
+    observatie, afzender: afz?.afzenderIdentiteit ?? "Bidley",
+  };
+  const token = makeToken(p.publiekEmail, process.env.UNSUBSCRIBE_SECRET!);
+  await db.insert(messages).values({
+    prospectId: id, kanaal: "email", stap: "Mail1",
+    onderwerp: mergeFields(tmpl.onderwerp, velden),
+    tekst: mergeFields(tmpl.body, velden),
+    status: "in_wachtrij", unsubscribeToken: token,
+  });
+  await logAudit({ actie: "mail1-gegenereerd", entiteit: "prospect", entiteitId: id, doorWie: "gebruiker" });
+  revalidatePath("/dashboard");
+  revalidatePath("/queue");
 }

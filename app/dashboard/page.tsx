@@ -16,7 +16,7 @@ export default async function Dashboard() {
   const cards: Card[] = active.map((p) => ({
     id: p.id, bedrijf: p.bedrijf, sector: p.sector, tier: p.tier,
     kanaal: p.kanaal, icpTotaal: p.icpTotaal, haakje: p.haakje,
-    lookalikeCluster: p.lookalikeCluster, status: p.status,
+    lookalikeCluster: p.lookalikeCluster, status: p.status, publiekEmail: p.publiekEmail,
   }));
 
   return (

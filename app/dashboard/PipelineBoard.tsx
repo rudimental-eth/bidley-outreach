@@ -1,12 +1,12 @@
 "use client";
 import { useMemo, useState } from "react";
-import { setStatus } from "@/app/prospects/actions";
+import { setStatus, verrijkContact, genereerMail1 } from "@/app/prospects/actions";
 import { Badge, tierTone } from "@/app/_components/ui";
 
 export type Card = {
   id: string; bedrijf: string; sector: string | null; tier: string | null;
   kanaal: string; icpTotaal: number | null; haakje: string | null;
-  lookalikeCluster: string | null; status: string;
+  lookalikeCluster: string | null; status: string; publiekEmail: string | null;
 };
 
 const COLUMNS = [
@@ -87,6 +87,22 @@ export default function PipelineBoard({ cards }: { cards: Card[] }) {
                       {p.lookalikeCluster && <Badge tone="violet">look-alike</Badge>}
                     </div>
                     {p.haakje && <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-slate-500">{p.haakje}</p>}
+                    {p.status === "nieuw" && (
+                      <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                        {p.publiekEmail ? (
+                          <>
+                            <span className="max-w-full truncate text-[11px] text-slate-400">{p.publiekEmail}</span>
+                            <form action={genereerMail1.bind(null, p.id)} className="contents">
+                              <button className="rounded-md bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white transition hover:bg-slate-700">✉️ Genereer Mail 1</button>
+                            </form>
+                          </>
+                        ) : (
+                          <form action={verrijkContact.bind(null, p.id)} className="contents">
+                            <button className="rounded-md bg-white px-2 py-1 text-[11px] font-semibold text-indigo-600 ring-1 ring-inset ring-indigo-200 transition hover:bg-indigo-50">🔎 Zoek contact</button>
+                          </form>
+                        )}
+                      </div>
+                    )}
                     {transitions(p.status).length > 0 && (
                       <div className="mt-3 flex gap-1.5">
                         {transitions(p.status).map((t) => (
